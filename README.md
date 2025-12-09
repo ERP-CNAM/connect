@@ -77,7 +77,7 @@ Si applicable, la requête doit contenir le JWT à des fins d'authentification. 
 ```json
 {
   "clientName": "string", // Nom du module appelant
-  "clientVersion": "string", // Version du service appelant
+  "clientVersion": "string", // Version du module appelant
   "serviceName": "string", // Nom (name) du service enregistré à appeler
   "path": "string", // Chemin de la route du service
   "debug": false, // Pour faciliter certains tests
