@@ -1,0 +1,9 @@
+.git*
+README.md
+.env*
+.env
+node_modules
+dist
+.vscode
+.idea
+.DS_Store
