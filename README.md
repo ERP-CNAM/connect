@@ -91,15 +91,18 @@ La requête n'est émise que si l'accès est possible et autorisé (vérificatio
 
 L'appel est fait sur le service avec `[IP]`:`listeningPort`/`path` avec la méthode HTTP utilisée à l'appel.
 
+La clé API de Connect est envoyée dans chaque requête pour permettre aux services d'authentifier Connect. Le service possède déjà la clé API, car il l'a transmise plus tôt pour s'enregistrer.
+
 ```json
 {
+  "apiKey": "string", // Clé de l'API Connect pour permettre au service d'authentifier l'émetteur de l'appel
   "debug": false, // Pour faciliter certains tests
   "userData": {}, // Informations du JWT décodées
   "payload": {} // Données. Contenu de la requête. Format libre
 }
 ```
 
-#### Reçu par connect
+#### Reçu par connect (du service)
 
 Le code HTTP de la requête doit être défini en accord avec le résultat.
 
@@ -111,7 +114,7 @@ Le code HTTP de la requête doit être défini en accord avec le résultat.
 }
 ```
 
-#### Renvoyé au client
+#### Renvoyé au client (résultat final)
 
 Le code HTTP de la requête est répliqué du service (sauf si erreur interne Connect).
 
