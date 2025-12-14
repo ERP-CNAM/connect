@@ -74,8 +74,11 @@ Selon la route appelée, utiliser la méthode HTTP correspondante sur la route `
 
 Si applicable, la requête doit contenir le JWT à des fins d'authentification. Soit dans le champ "Authorization" de l'en-tête soit dans les cookies de la requête.
 
+Si un service effectue la requête, il peut remplir le champ "apiKey" pour passer la vérification d'accès utilisateur.
+
 ```json
 {
+  "apiKey": "string", // Clé de l'API Connect pour permettre l'accès direct à toutes les routes (seulement si service)
   "clientName": "string", // Nom du module appelant
   "clientVersion": "string", // Version du module appelant
   "serviceName": "string", // Nom (name) du service enregistré à appeler
@@ -144,11 +147,11 @@ Description d'une ligne de log.
     "clientName": "string",
     "clientVersion": "string",
     "serviceName": "string",
-    "serviceVersion": "string",
-    "path": "string"
+    "serviceVersion": "string"
   },
   "request": {
     "success": true,
+    "path": "string",
     "method": "string", // Méthode HTTP utilisée
     "httpCode": 0, // Code HTTP de la requête retour du service
     "status": "string",
