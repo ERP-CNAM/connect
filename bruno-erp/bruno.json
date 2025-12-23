@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "ERP-CNAM",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}
