@@ -92,6 +92,8 @@ Si un service effectue la requête, il peut remplir le champ "apiKey" pour passe
 
 La requête n'est émise que si l'accès est possible et autorisé (vérification de la route (+ méthode HTTP), validation du JWT et application du bitmask sur le code permission de la route).
 
+Les informations contenues dans le header sont dupliquées pour la requête sortante.
+
 L'appel est fait sur le service avec `[IP]`:`listeningPort`/`path` avec la méthode HTTP utilisée à l'appel.
 
 La clé API de Connect est envoyée dans chaque requête pour permettre aux services d'authentifier Connect. Le service possède déjà la clé API, car il l'a transmise plus tôt pour s'enregistrer.
