@@ -1,17 +1,15 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, status
 
 from app.models.register_body import RegisterBody, RegisterBodyPublic
+from app.security.key import validate_api_key
 
 load_dotenv(dotenv_path=".env")
 
-CONNECT_API_KEY = os.getenv("CONNECT_API_KEY")
 CONNECT_VERSION = os.getenv("CONNECT_VERSION")
-assert CONNECT_API_KEY is not None and CONNECT_VERSION is not None, (
-    "Environment variable is not set"
-)
+assert CONNECT_VERSION is not None, "CONNECT_VERSION environment variable is not set"
 
 api = FastAPI()
 registered_services: list[RegisterBodyPublic] = list()
@@ -24,9 +22,7 @@ def ping():
 
 @api.post("/register")
 def register(body: RegisterBody):
-    valid_key = body.apiKey == CONNECT_API_KEY
-    if not valid_key:
-        raise HTTPException(status_code=401)
+    validate_api_key(body.apiKey)
 
     body_filtered = RegisterBodyPublic(
         name=body.name,
