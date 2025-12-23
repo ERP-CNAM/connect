@@ -22,3 +22,13 @@ def validate_api_key(api_key: str) -> tuple[bool, str | None]:
         return False, "Invalid API key"
 
     return True, None
+
+
+def get_api_key() -> str:
+    """
+    Returns the configured CONNECT_API_KEY.
+
+    Returns:
+        The API key as a string.
+    """
+    return CONNECT_API_KEY
