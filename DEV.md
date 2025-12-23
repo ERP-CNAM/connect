@@ -1,5 +1,5 @@
 # RUN DEV ENV
 
 ```sh
-fastapi dev --app app
+fastapi dev --app api
 ```
