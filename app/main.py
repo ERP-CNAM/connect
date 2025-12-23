@@ -1,15 +1,27 @@
-from typing import Union
+from fastapi import FastAPI, Response, status
 
-from fastapi import FastAPI
+from app.models.register_body import RegisterBody
 
-app = FastAPI()
+api = FastAPI()
+registered_services: list[RegisterBody] = list()
 
 
-@app.get("/")
+@api.get("/")
 def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+@api.get("/ping", status_code=status.HTTP_200_OK)
+def ping():
+    return {}
+
+
+@api.post("/register")
+def register(body: RegisterBody, response: Response):
+    valid_key = True  # TODO: implement api key mechanism
+    if valid_key:
+        registered_services.append(body)
+        response.status_code = status.HTTP_200_OK
+    else:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+    return {}
