@@ -21,8 +21,12 @@ def ping():
 
 
 @api.post("/register")
-def register(body: RegisterBody):
-    validate_api_key(body.apiKey)
+def register(body: RegisterBody, status=status.HTTP_202_ACCEPTED):
+    is_valid, error_message = validate_api_key(body.apiKey)
+    if not is_valid:
+        return {
+            "Error while validating API key": error_message
+        }, status.HTTP_401_UNAUTHORIZED
 
     body_filtered = RegisterBodyPublic(
         name=body.name,
@@ -32,10 +36,18 @@ def register(body: RegisterBody):
     )
 
     # TODO : check for duplicates
+    for service in registered_services:
+        if (
+            service.name == body_filtered.name
+            and service.version == body_filtered.version
+        ):
+            return {
+                "Error while registering service": "Service with this name and version already registered"
+            }, status.HTTP_409_CONFLICT
 
     registered_services.append(body_filtered)
 
-    return {}
+    return {"message": "Service registered successfully"}
 
 
 @api.get("/services")
