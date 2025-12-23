@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, status
 
 from app.models.register_body import RegisterBody, RegisterBodyPublic
 
@@ -28,14 +28,16 @@ def register(body: RegisterBody):
     if not valid_key:
         raise HTTPException(status_code=401)
 
-    filtered_body_public = RegisterBodyPublic(
+    body_filtered = RegisterBodyPublic(
         name=body.name,
         description=body.description,
         version=body.version,
         routes=body.routes,
     )
+
     # TODO : check for duplicates
-    registered_services.append(filtered_body_public)
+
+    registered_services.append(body_filtered)
 
     return {}
 
