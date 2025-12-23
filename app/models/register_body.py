@@ -20,10 +20,13 @@ class Route(BaseModel):
     permission: int
 
 
-class RegisterBody(BaseModel):
+class RegisterBodyPublic(BaseModel):
     name: str
     description: str
     version: str
     routes: list[Route]
+
+
+class RegisterBody(RegisterBodyPublic):
     listeningPort: int
     apiKey: str
