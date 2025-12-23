@@ -1,8 +1,10 @@
 import os
+from time import time
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 
+from app.models.connect_body import ConnectClientIn
 from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
 from app.security.key import validate_api_key
 
@@ -62,3 +64,39 @@ def services():
         )
         for service in registered_services
     ]
+
+
+@api.api_route(
+    "/connect",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"],
+)
+def connect(body: ConnectClientIn):
+    # Timestamp in
+    timestamp_in = time() * 1000
+
+    debug = body.debug
+
+    # Check JWT validity
+    user_data = {}
+    user_permission = 0
+
+    # Check API key
+    api_key_access, _ = validate_api_key(body.apiKey)
+
+    # Check routes and permissions (ignore http query)
+    if not api_key_access:
+        pass
+
+    # Prepare service call
+    # Call service
+    # Process service response
+    # Prepare response
+
+    # Timestamp out
+    timestamp_out = time() * 1000
+
+    # Prepare log
+
+    # Log data
+
+    return {}

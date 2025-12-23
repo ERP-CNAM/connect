@@ -11,7 +11,7 @@ class HttpMethod(str, Enum):
     DELETE = "DELETE"
     OPTIONS = "OPTIONS"
     HEAD = "HEAD"
-    TRACe = "TRACE"
+    TRACE = "TRACE"
 
 
 class Route(BaseModel):
