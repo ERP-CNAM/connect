@@ -1,8 +1,8 @@
 .env
-node_modules
-dist
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea
 .DS_Store
+.venv/*
+__pycache__/

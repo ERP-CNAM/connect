@@ -1,0 +1,28 @@
+meta {
+  name: Connect
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{API_URL}}/connect
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "apiKey": "string",
+    "clientName": "CONNECT",
+    "clientVersion": "1.0.0",
+    "serviceName": "CONNECT",
+    "path": "ping",
+    "debug": false,
+    "payload": {}
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
