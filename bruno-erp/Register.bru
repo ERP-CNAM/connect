@@ -1,0 +1,33 @@
+meta {
+  name: Register
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{API_URL}}/register
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "CONNECT",
+    "description": "Connect everything",
+    "version": "1.0.0",
+    "routes": [
+      {
+        "path": "ping",
+        "method": "GET",
+        "permission": 0
+      }
+    ],
+    "listeningPort": 8000,
+    "apiKey": "{{API_KEY}}"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

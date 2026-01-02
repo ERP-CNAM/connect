@@ -1,3 +1,7 @@
 {
-  "recommendations": ["EditorConfig.EditorConfig", "esbenp.prettier-vscode"]
+  "recommendations": [
+    "charliermarsh.ruff",
+    "EditorConfig.EditorConfig",
+    "esbenp.prettier-vscode"
+  ]
 }
