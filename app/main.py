@@ -4,9 +4,16 @@ from time import time
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 
-from app.models.connect_body import ConnectClientIn
+from app.models.connect_body import (
+    ConnectClientIn,
+    ConnectClientOut,
+    ConnectServiceIn,
+    ConnectServiceOut,
+    ConnectStatus,
+    UserData,
+)
 from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
-from app.security.key import validate_api_key
+from app.security.key import get_api_key, validate_api_key
 
 load_dotenv(dotenv_path=".env")
 
@@ -76,21 +83,79 @@ def connect(body: ConnectClientIn):
 
     debug = body.debug
 
+    data_out: ConnectClientOut = ConnectClientOut(
+        success=False,
+        id="",
+        status=ConnectStatus.SUCCESS,
+        message="",
+        payload={},
+    )
+
     # Check JWT validity
-    user_data = {}
-    user_permission = 0
+    # TODO
+    user_data: UserData = {
+        "userId": "",
+        "permission": 0,
+    }
+    user_permission = user_data["permission"]
 
     # Check API key
     api_key_access, _ = validate_api_key(body.apiKey)
 
-    # Check routes and permissions (ignore http query)
+    # Check access
     if not api_key_access:
-        pass
+        # Service
+        matched_service = None
+        for service in registered_services:
+            if service.name == body.serviceName:
+                matched_service = service
+                break
+        if matched_service is None:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = "Service not registered"
+            return data_out
+
+        # Path/Route
+        clean_path = body.path.split("?")[0]
+        matched_route = None
+        for route in matched_service.routes:
+            if route.path == clean_path:
+                matched_route = route
+                break
+        if matched_route is None:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = "Path not in service"
+            return data_out
+
+        # Permission
+        if user_permission & matched_route.permission != matched_route.permission:
+            data_out.status = ConnectStatus.UNAUTHORIZED
+            data_out.message = "Permission denied"
+            return data_out
 
     # Prepare service call
+    service_in = ConnectServiceIn(
+        apiKey=get_api_key(),
+        debug=debug,
+        userData=user_data,
+        payload=body.payload,
+    )
     # Call service
+    # TODO
     # Process service response
+    # TODO
+    service_out = ConnectServiceOut(
+        success=True,
+        message="",
+        payload={},
+    )
     # Prepare response
+    data_out.success = service_out.success
+    data_out.status = (
+        service_out.status if not service_out.success else ConnectStatus.SUCCESS
+    )
+    data_out.message = service_out.message
+    data_out.payload = service_out.payload
 
     # Timestamp out
     timestamp_out = time() * 1000
@@ -99,4 +164,4 @@ def connect(body: ConnectClientIn):
 
     # Log data
 
-    return {}
+    return data_out
