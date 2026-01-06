@@ -34,7 +34,7 @@ Les services sont conservés en mémoire par instance de Connect.
   "routes": [
     {
       "path": "string", // Chemin de la route
-      "method": "string", // GET, POST, PUT, PATCH, DELETE
+      "method": "string", // GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD, TRACE
       "permission": 0 // Bitmask pour le contrôle d'accès (0 = route publique)
     }
   ],
@@ -68,7 +68,7 @@ Connect `/services` **GET**
 
 Connect `/connect`
 
-Selon la route appelée, utiliser la méthode HTTP correspondante sur la route `/connect` (**GET**, **POST**, **PUT**, **PATCH**, **DELETE**)
+Selon la route appelée, utiliser la méthode HTTP correspondante sur la route `/connect` (**GET**, **POST**, **PUT**, **PATCH**, **DELETE**, **OPTIONS**, **HEAD**, **TRACE**).
 
 #### Envoyé par le client
 
