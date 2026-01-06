@@ -27,25 +27,25 @@ api = FastAPI()
 registered_services: list[RegisterBodyStored] = list()
 
 
-@api.get("/ping", status_code=status.HTTP_200_OK)
+@api.get("/ping")
 def ping():
-    return {}
+    return JSONResponse(status_code=status.HTTP_200_OK, content={})
 
 
 @api.post("/register")
-def register(request: Request, body: RegisterBodyIn, status=status.HTTP_202_ACCEPTED):
-    is_valid, error_message = validate_api_key(body.apiKey)
+def register(request: Request, body: RegisterBodyIn):
+    is_valid = validate_api_key(body.apiKey)
     if not is_valid:
-        return {
-            "Error while validating API key": error_message
-        }, status.HTTP_401_UNAUTHORIZED
-
-    # TODO : check for duplicates
-    for service in registered_services:
-        if service.name == body.name and service.version == body.version:
-            return {
-                "Error while registering service": "Service with this name and version already registered"
-            }, status.HTTP_409_CONFLICT
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Invalid API key"},
+        )
+    replaced = False
+    for index, service in enumerate(registered_services):
+        if service.name == body.name:
+            registered_services.pop(index)
+            replaced = True
+            break
 
     service_ip = request.client.host
 
@@ -60,7 +60,14 @@ def register(request: Request, body: RegisterBodyIn, status=status.HTTP_202_ACCE
 
     registered_services.append(body_stored)
 
-    return {"message": "Service registered successfully"}
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "detail": f"Replaced existing {body.name} with version {body.version}"
+            if replaced
+            else f"Registered {body.name} version {body.version}"
+        },
+    )
 
 
 @api.get("/services")
@@ -79,6 +86,7 @@ def services():
 @api.api_route(
     "/connect",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"],
+    response_model=ConnectClientOut,
 )
 def connect(body: ConnectClientIn):
     # Timestamp in
@@ -103,7 +111,7 @@ def connect(body: ConnectClientIn):
     user_permission = user_data["permission"]
 
     # Check API key
-    api_key_access, _ = validate_api_key(body.apiKey)
+    api_key_access = validate_api_key(body.apiKey)
 
     # Check access
     if not api_key_access:
@@ -171,9 +179,9 @@ def connect(body: ConnectClientIn):
     try:
         response = response.json()
         ConnectServiceOut.model_validate(response)
-    except ValidationError as e:
+    except ValidationError:
         data_out.status = ConnectStatus.ERROR
-        data_out.message = f"Service response unprocessable ({e})"
+        data_out.message = f"Service response unprocessable ({response})"
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=data_out.model_dump(),
@@ -195,8 +203,10 @@ def connect(body: ConnectClientIn):
     timestamp_out = time() * 1000
 
     # Prepare log
+    # TODO
 
     # Log data
+    # TODO
 
     return JSONResponse(
         status_code=status_code,
