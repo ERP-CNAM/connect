@@ -103,8 +103,8 @@ def connect(request: Request, body: ConnectClientIn):
         payload={},
     )
 
-    # Check JWT validity
     token = None
+    user_data = {}
 
     # JWT in Authorization header
     auth = request.headers.get("Authorization")
@@ -115,7 +115,7 @@ def connect(request: Request, body: ConnectClientIn):
     if not token:
         token = request.cookies.get("token")
 
-    user_data = {}
+    # Check JWT validity
     if token is not None:
         try:
             user_data = validate_jwt(token)
@@ -131,7 +131,6 @@ def connect(request: Request, body: ConnectClientIn):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED, content=data_out.model_dump()
             )
-
     user_permission = 0 if not user_data else user_data["permission"]
 
     # Check API key
