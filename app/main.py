@@ -1,8 +1,11 @@
 import os
 from time import time
 
+import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from app.models.connect_body import (
     ConnectClientIn,
@@ -113,7 +116,9 @@ def connect(body: ConnectClientIn):
         if matched_service is None:
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Service not registered"
-            return data_out
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
+            )
 
         # Path/Route
         clean_path = body.path.split("?")[0]
@@ -125,13 +130,17 @@ def connect(body: ConnectClientIn):
         if matched_route is None:
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Path not in service"
-            return data_out
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
+            )
 
         # Permission
         if user_permission & matched_route.permission != matched_route.permission:
             data_out.status = ConnectStatus.UNAUTHORIZED
             data_out.message = "Permission denied"
-            return data_out
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN, content=data_out.model_dump()
+            )
 
     # Prepare service call
     service_in = ConnectServiceIn(
@@ -141,13 +150,38 @@ def connect(body: ConnectClientIn):
         payload=body.payload,
     )
     # Call service
-    # TODO
+    response = None
+    status_code = None
+    try:
+        response = requests.request(
+            method=matched_route.method,
+            url=f"http://{matched_service.ip}:{matched_service.listeningPort}/{body.path}",
+            json=service_in.model_dump(),
+            timeout=10,
+        )
+        status_code = response.status_code
+    except Exception as e:
+        data_out.status = ConnectStatus.UNREACHABLE
+        data_out.message = f"Service did not respond ({e})"
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=data_out.model_dump(),
+        )
     # Process service response
-    # TODO
+    try:
+        response = response.json()
+        ConnectServiceOut.model_validate(response)
+    except ValidationError as e:
+        data_out.status = ConnectStatus.ERROR
+        data_out.message = f"Service response unprocessable ({e})"
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=data_out.model_dump(),
+        )
     service_out = ConnectServiceOut(
-        success=True,
-        message="",
-        payload={},
+        success=response["success"],
+        message=response["message"],
+        payload=response["payload"],
     )
     # Prepare response
     data_out.success = service_out.success
@@ -164,4 +198,7 @@ def connect(body: ConnectClientIn):
 
     # Log data
 
-    return data_out
+    return JSONResponse(
+        status_code=status_code,
+        content=data_out.model_dump(),
+    )
