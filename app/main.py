@@ -1,6 +1,7 @@
 import os
 from time import time
 
+import jwt
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
@@ -13,9 +14,9 @@ from app.models.connect_body import (
     ConnectServiceIn,
     ConnectServiceOut,
     ConnectStatus,
-    UserData,
 )
 from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
+from app.security.jwt import validate_jwt
 from app.security.key import get_api_key, validate_api_key
 
 load_dotenv(dotenv_path=".env")
@@ -88,7 +89,7 @@ def services():
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"],
     response_model=ConnectClientOut,
 )
-def connect(body: ConnectClientIn):
+def connect(request: Request, body: ConnectClientIn):
     # Timestamp in
     timestamp_in = time() * 1000
 
@@ -96,19 +97,42 @@ def connect(body: ConnectClientIn):
 
     data_out: ConnectClientOut = ConnectClientOut(
         success=False,
-        id="",
+        id=0,
         status=ConnectStatus.SUCCESS,
         message="",
         payload={},
     )
 
     # Check JWT validity
-    # TODO
-    user_data: UserData = {
-        "userId": "",
-        "permission": 0,
-    }
-    user_permission = user_data["permission"]
+    token = None
+
+    # JWT in Authorization header
+    auth = request.headers.get("Authorization")
+    if auth and auth.lower().startswith("bearer "):
+        token = auth.split(" ", 1)[1]
+
+    # JWT in cookie
+    if not token:
+        token = request.cookies.get("token")
+
+    user_data = {}
+    if token is not None:
+        try:
+            user_data = validate_jwt(token)
+        except jwt.ExpiredSignatureError:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = "Expired JWT"
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED, content=data_out.model_dump()
+            )
+        except jwt.InvalidTokenError:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = "Invalid JWT"
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED, content=data_out.model_dump()
+            )
+
+    user_permission = 0 if not user_data else user_data["permission"]
 
     # Check API key
     api_key_access = validate_api_key(body.apiKey)
@@ -166,6 +190,10 @@ def connect(body: ConnectClientIn):
             url=f"http://{matched_service.ip}:{matched_service.listeningPort}/{body.path}",
             json=service_in.model_dump(),
             timeout=10,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": f"Connect/{CONNECT_VERSION}",
+            },
         )
         status_code = response.status_code
     except Exception as e:

@@ -4,7 +4,8 @@ from pydantic import BaseModel
 
 
 class UserData(BaseModel):
-    userId: str
+    exp: int
+    userId: int
     permission: int
 
 
@@ -21,7 +22,7 @@ class ConnectClientIn(BaseModel):
 class ConnectServiceIn(BaseModel):
     apiKey: str
     debug: bool
-    userData: UserData
+    userData: UserData | dict
     payload: dict
 
 
@@ -42,7 +43,7 @@ class ConnectStatus(str, Enum):
 
 class ConnectClientOut(BaseModel):
     success: bool
-    id: str
+    id: int
     status: ConnectStatus
     message: str
     payload: dict
