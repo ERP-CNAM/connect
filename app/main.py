@@ -113,35 +113,35 @@ def connect(body: ConnectClientIn):
     # Check API key
     api_key_access = validate_api_key(body.apiKey)
 
+    # Check service
+    matched_service = None
+    for service in registered_services:
+        if service.name == body.serviceName:
+            matched_service = service
+            break
+    if matched_service is None:
+        data_out.status = ConnectStatus.UNREGISTERED
+        data_out.message = "Service not registered"
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
+        )
+
+    # Check path/route
+    clean_path = body.path.split("?")[0]
+    matched_route = None
+    for route in matched_service.routes:
+        if route.path == clean_path:
+            matched_route = route
+            break
+    if matched_route is None:
+        data_out.status = ConnectStatus.UNREGISTERED
+        data_out.message = "Path not in service"
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
+        )
+
     # Check access
     if not api_key_access:
-        # Service
-        matched_service = None
-        for service in registered_services:
-            if service.name == body.serviceName:
-                matched_service = service
-                break
-        if matched_service is None:
-            data_out.status = ConnectStatus.UNREGISTERED
-            data_out.message = "Service not registered"
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
-            )
-
-        # Path/Route
-        clean_path = body.path.split("?")[0]
-        matched_route = None
-        for route in matched_service.routes:
-            if route.path == clean_path:
-                matched_route = route
-                break
-        if matched_route is None:
-            data_out.status = ConnectStatus.UNREGISTERED
-            data_out.message = "Path not in service"
-            return JSONResponse(
-                status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
-            )
-
         # Permission
         if user_permission & matched_route.permission != matched_route.permission:
             data_out.status = ConnectStatus.UNAUTHORIZED
