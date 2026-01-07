@@ -16,13 +16,8 @@ from app.models.connect_body import (
     ConnectStatus,
     UserData,
 )
-from app.models.connect_log import ConnectLog
-from app.models.register_body import (
-    HttpMethod,
-    RegisterBodyIn,
-    RegisterBodyOut,
-    RegisterBodyStored,
-)
+from app.models.connect_log import ConnectLog, FixedLogData
+from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
 from app.security.jwt import validate_jwt
 from app.security.key import get_api_key, validate_api_key
 
@@ -92,10 +87,7 @@ def services():
 
 
 def log_and_send(
-    timestamp_in: float,
-    body: ConnectClientIn,
-    method: HttpMethod,
-    service_version: str,
+    log_data: FixedLogData,
     data_out: ConnectClientOut,
     user_data: UserData | dict,
     status_code: int,
@@ -107,27 +99,27 @@ def log_and_send(
     log_id = 0
     log = ConnectLog(
         id=log_id,
-        timestampIn=timestamp_in,
+        timestampIn=log_data.timestamp_in,
         timestampOut=timestamp_out,
         identification={
             "connectVersion": CONNECT_VERSION,
-            "clientName": body.clientName,
-            "clientVersion": body.clientVersion,
-            "serviceName": body.serviceName,
-            "serviceVersion": service_version,
+            "clientName": log_data.body.clientName,
+            "clientVersion": log_data.body.clientVersion,
+            "serviceName": log_data.body.serviceName,
+            "serviceVersion": log_data.service_version,
         },
         request={
             "success": data_out.success,
-            "path": body.path,
-            "method": method,
+            "path": log_data.body.path,
+            "method": log_data.method,
             "httpCode": status_code,
             "status": data_out.status,
             "message": data_out.message,
         },
         data={
-            "debug": body.debug,
+            "debug": log_data.body.debug,
             "userData": user_data,
-            "payloadIn": body.payload,
+            "payloadIn": log_data.body.payload,
             "payloadOut": data_out.payload,
         },
     )
@@ -151,7 +143,13 @@ def connect(request: Request, body: ConnectClientIn):
     # Timestamp in
     timestamp_in = time() * 1000
 
-    debug = body.debug
+    # Prepare data
+    log_data = FixedLogData(
+        timestamp_in=timestamp_in,
+        body=body,
+        method=request.method,
+        service_version="",
+    )
 
     data_out: ConnectClientOut = ConnectClientOut(
         success=False,
@@ -161,9 +159,10 @@ def connect(request: Request, body: ConnectClientIn):
         payload={},
     )
 
+    debug = body.debug
+
     token = None
     user_data = {}
-    service_version = ""
 
     # JWT in Authorization header
     auth = request.headers.get("Authorization")
@@ -182,10 +181,7 @@ def connect(request: Request, body: ConnectClientIn):
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Expired JWT"
             return log_and_send(
-                timestamp_in=timestamp_in,
-                body=body,
-                method=request.method,
-                service_version=service_version,
+                log_data=log_data,
                 data_out=data_out,
                 user_data=user_data,
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -194,10 +190,7 @@ def connect(request: Request, body: ConnectClientIn):
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Invalid JWT"
             return log_and_send(
-                timestamp_in=timestamp_in,
-                body=body,
-                method=request.method,
-                service_version=service_version,
+                log_data=log_data,
                 data_out=data_out,
                 user_data=user_data,
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -212,16 +205,13 @@ def connect(request: Request, body: ConnectClientIn):
     for service in registered_services:
         if service.name == body.serviceName:
             matched_service = service
-            service_version = service.version
+            log_data.service_version = service.version
             break
     if matched_service is None:
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Service not registered"
         return log_and_send(
-            timestamp_in=timestamp_in,
-            body=body,
-            method=request.method,
-            service_version=service_version,
+            log_data=log_data,
             data_out=data_out,
             user_data=user_data,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -238,10 +228,7 @@ def connect(request: Request, body: ConnectClientIn):
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Path not in service"
         return log_and_send(
-            timestamp_in=timestamp_in,
-            body=body,
-            method=request.method,
-            service_version=service_version,
+            log_data=log_data,
             data_out=data_out,
             user_data=user_data,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -254,10 +241,7 @@ def connect(request: Request, body: ConnectClientIn):
             f"Method {request.method} used on {matched_route.method.value} route"
         )
         return log_and_send(
-            timestamp_in=timestamp_in,
-            body=body,
-            method=request.method,
-            service_version=service_version,
+            log_data=log_data,
             data_out=data_out,
             user_data=user_data,
             status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
@@ -270,10 +254,7 @@ def connect(request: Request, body: ConnectClientIn):
             data_out.status = ConnectStatus.UNAUTHORIZED
             data_out.message = "Permission denied"
             return log_and_send(
-                timestamp_in=timestamp_in,
-                body=body,
-                method=request.method,
-                service_version=service_version,
+                log_data=log_data,
                 data_out=data_out,
                 user_data=user_data,
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -305,10 +286,7 @@ def connect(request: Request, body: ConnectClientIn):
         data_out.status = ConnectStatus.UNREACHABLE
         data_out.message = f"Service did not respond ({e})"
         return log_and_send(
-            timestamp_in=timestamp_in,
-            body=body,
-            method=request.method,
-            service_version=service_version,
+            log_data=log_data,
             data_out=data_out,
             user_data=user_data,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -321,10 +299,7 @@ def connect(request: Request, body: ConnectClientIn):
         data_out.status = ConnectStatus.CONNECT
         data_out.message = f"Service response unprocessable ({response})"
         return log_and_send(
-            timestamp_in=timestamp_in,
-            body=body,
-            method=request.method,
-            service_version=service_version,
+            log_data=log_data,
             data_out=data_out,
             user_data=user_data,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -343,10 +318,7 @@ def connect(request: Request, body: ConnectClientIn):
     data_out.payload = service_out.payload
 
     return log_and_send(
-        timestamp_in=timestamp_in,
-        body=body,
-        method=request.method,
-        service_version=service_version,
+        log_data=log_data,
         data_out=data_out,
         user_data=user_data,
         status_code=status_code,

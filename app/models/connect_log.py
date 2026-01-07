@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.models.connect_body import ConnectStatus, UserData
+from app.models.connect_body import ConnectClientIn, ConnectStatus, UserData
 from app.models.register_body import HttpMethod
 
 
@@ -35,3 +35,10 @@ class ConnectLog(BaseModel):
     identification: Identification
     request: Request
     data: Data
+
+
+class FixedLogData(BaseModel):
+    timestamp_in: float
+    body: ConnectClientIn
+    method: HttpMethod
+    service_version: str
