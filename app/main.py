@@ -163,6 +163,17 @@ def connect(request: Request, body: ConnectClientIn):
             status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
         )
 
+    # Check method
+    if matched_route.method != request.method:
+        data_out.status = ConnectStatus.UNREGISTERED
+        data_out.message = (
+            f"Method {request.method} used on {matched_route.method.value} route"
+        )
+        return JSONResponse(
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+            content=data_out.model_dump(),
+        )
+
     # Check access
     if not api_key_access:
         # Permission
@@ -185,7 +196,7 @@ def connect(request: Request, body: ConnectClientIn):
     status_code = None
     try:
         response = requests.request(
-            method=matched_route.method,
+            method=request.method,
             url=f"http://{matched_service.ip}:{matched_service.listeningPort}/{body.path}",
             json=service_in.model_dump(),
             timeout=10,
@@ -207,7 +218,7 @@ def connect(request: Request, body: ConnectClientIn):
         response = response.json()
         ConnectServiceOut.model_validate(response)
     except ValidationError:
-        data_out.status = ConnectStatus.ERROR
+        data_out.status = ConnectStatus.CONNECT
         data_out.message = f"Service response unprocessable ({response})"
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -221,7 +232,7 @@ def connect(request: Request, body: ConnectClientIn):
     # Prepare response
     data_out.success = service_out.success
     data_out.status = (
-        service_out.status if not service_out.success else ConnectStatus.SUCCESS
+        ConnectStatus.ERROR if not data_out.success else ConnectStatus.SUCCESS
     )
     data_out.message = service_out.message
     data_out.payload = service_out.payload

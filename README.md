@@ -153,7 +153,7 @@ Description d'une ligne de log.
     "success": true,
     "path": "string",
     "method": "string", // Méthode HTTP utilisée
-    "httpCode": 0, // Code HTTP de la requête retour du service
+    "httpCode": 0, // Code HTTP retour de la requête
     "status": "string",
     "message": "string"
   },
