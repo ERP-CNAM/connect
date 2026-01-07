@@ -1,12 +1,25 @@
 import os
 from time import time
 
+import jwt
+import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
-from app.models.connect_body import ConnectClientIn
+from app.logger import log_and_prepare
+from app.models.connect_body import (
+    ConnectClientIn,
+    ConnectClientOut,
+    ConnectServiceIn,
+    ConnectServiceOut,
+    ConnectStatus,
+)
+from app.models.connect_log import FixedLogData
 from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
-from app.security.key import validate_api_key
+from app.security.jwt import validate_jwt
+from app.security.key import get_api_key, validate_api_key
 
 load_dotenv(dotenv_path=".env")
 
@@ -17,27 +30,27 @@ api = FastAPI()
 registered_services: list[RegisterBodyStored] = list()
 
 
-@api.get("/ping", status_code=status.HTTP_200_OK)
+@api.get("/ping")
 def ping():
-    return {}
+    return JSONResponse(status_code=status.HTTP_200_OK, content={})
 
 
 @api.post("/register")
-def register(request: Request, body: RegisterBodyIn, status=status.HTTP_202_ACCEPTED):
-    is_valid, error_message = validate_api_key(body.apiKey)
+def register(request: Request, body: RegisterBodyIn):
+    is_valid = validate_api_key(body.apiKey)
     if not is_valid:
-        return {
-            "Error while validating API key": error_message
-        }, status.HTTP_401_UNAUTHORIZED
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Invalid API key"},
+        )
+    replaced = False
+    for index, service in enumerate(registered_services):
+        if service.name == body.name:
+            registered_services.pop(index)
+            replaced = True
+            break
 
-    # TODO : check for duplicates
-    for service in registered_services:
-        if service.name == body.name and service.version == body.version:
-            return {
-                "Error while registering service": "Service with this name and version already registered"
-            }, status.HTTP_409_CONFLICT
-
-    service_ip = request.client.host
+    service_ip = getattr(body, "overrideIp", None) or request.client.host
 
     body_stored = RegisterBodyStored(
         name=body.name,
@@ -50,7 +63,14 @@ def register(request: Request, body: RegisterBodyIn, status=status.HTTP_202_ACCE
 
     registered_services.append(body_stored)
 
-    return {"message": "Service registered successfully"}
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "detail": f"Replaced existing {body.name} with version {body.version}"
+            if replaced
+            else f"Registered {body.name} version {body.version}"
+        },
+    )
 
 
 @api.get("/services")
@@ -69,34 +89,189 @@ def services():
 @api.api_route(
     "/connect",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"],
+    response_model=ConnectClientOut,
 )
-def connect(body: ConnectClientIn):
+def connect(request: Request, body: ConnectClientIn):
     # Timestamp in
     timestamp_in = time() * 1000
 
+    # Prepare data
+    log_data = FixedLogData(
+        timestamp_in=timestamp_in,
+        body=body,
+        method=request.method,
+        service_version="",
+    )
+
+    data_out: ConnectClientOut = ConnectClientOut(
+        success=False,
+        id=0,
+        status=ConnectStatus.SUCCESS,
+        message="",
+        payload={},
+    )
+
     debug = body.debug
 
-    # Check JWT validity
+    token = None
     user_data = {}
-    user_permission = 0
+
+    # JWT in Authorization header
+    auth = request.headers.get("Authorization")
+    if auth and auth.lower().startswith("bearer "):
+        token = auth.split(" ", 1)[1]
+
+    # JWT in cookie
+    if not token:
+        token = request.cookies.get("token")
+
+    # Check JWT validity
+    if token is not None:
+        try:
+            user_data = validate_jwt(token)
+        except jwt.ExpiredSignatureError:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = "Expired JWT"
+            return log_and_prepare(
+                log_data=log_data,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+        except jwt.InvalidTokenError:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = "Invalid JWT"
+            return log_and_prepare(
+                log_data=log_data,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+    user_permission = 0 if not user_data else user_data["permission"]
 
     # Check API key
-    api_key_access, _ = validate_api_key(body.apiKey)
+    api_key_access = validate_api_key(body.apiKey)
 
-    # Check routes and permissions (ignore http query)
+    # Check service
+    matched_service = None
+    for service in registered_services:
+        if service.name == body.serviceName:
+            matched_service = service
+            log_data.service_version = service.version
+            break
+    if matched_service is None:
+        data_out.status = ConnectStatus.UNREGISTERED
+        data_out.message = "Service not registered"
+        return log_and_prepare(
+            log_data=log_data,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check path/route
+    clean_path = body.path.split("?")[0]
+    matched_route = None
+    for route in matched_service.routes:
+        if route.path == clean_path:
+            matched_route = route
+            break
+    if matched_route is None:
+        data_out.status = ConnectStatus.UNREGISTERED
+        data_out.message = "Path not in service"
+        return log_and_prepare(
+            log_data=log_data,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check method
+    if matched_route.method != request.method:
+        data_out.status = ConnectStatus.UNREGISTERED
+        data_out.message = (
+            f"Method {request.method} used on {matched_route.method.value} route"
+        )
+        return log_and_prepare(
+            log_data=log_data,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    # Check access
     if not api_key_access:
-        pass
+        # Permission
+        if user_permission & matched_route.permission != matched_route.permission:
+            data_out.status = ConnectStatus.UNAUTHORIZED
+            data_out.message = "Permission denied"
+            return log_and_prepare(
+                log_data=log_data,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
 
     # Prepare service call
+    service_in = ConnectServiceIn(
+        apiKey=get_api_key(),
+        debug=debug,
+        userData=user_data,
+        payload=body.payload,
+    )
     # Call service
+    response = None
+    status_code = None
+    try:
+        response = requests.request(
+            method=request.method,
+            url=f"http://{matched_service.ip}:{matched_service.listeningPort}/{body.path}",
+            json=service_in.model_dump(),
+            timeout=10,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": f"Connect/{CONNECT_VERSION}",
+            },
+        )
+        status_code = response.status_code
+    except Exception as e:
+        data_out.status = ConnectStatus.UNREACHABLE
+        data_out.message = f"Service did not respond ({e})"
+        return log_and_prepare(
+            log_data=log_data,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     # Process service response
+    try:
+        response = response.json()
+        ConnectServiceOut.model_validate(response)
+    except ValidationError:
+        data_out.status = ConnectStatus.CONNECT
+        data_out.message = f"Service response unprocessable ({response})"
+        return log_and_prepare(
+            log_data=log_data,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    service_out = ConnectServiceOut(
+        success=response["success"],
+        message=response["message"],
+        payload=response["payload"],
+    )
     # Prepare response
+    data_out.success = service_out.success
+    data_out.status = (
+        ConnectStatus.ERROR if not data_out.success else ConnectStatus.SUCCESS
+    )
+    data_out.message = service_out.message
+    data_out.payload = service_out.payload
 
-    # Timestamp out
-    timestamp_out = time() * 1000
-
-    # Prepare log
-
-    # Log data
-
-    return {}
+    return log_and_prepare(
+        log_data=log_data,
+        data_out=data_out,
+        user_data=user_data,
+        status_code=status_code,
+    )

@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -28,6 +29,7 @@ class RegisterBodyOut(BaseModel):
 
 
 class RegisterBodyIn(RegisterBodyOut):
+    overrideIp: str | None = None
     listeningPort: int
     apiKey: str
 

@@ -1,13 +1,16 @@
+from enum import Enum
+
 from pydantic import BaseModel
 
 
 class UserData(BaseModel):
-    userId: str
+    exp: int
+    userId: int
     permission: int
 
 
 class ConnectClientIn(BaseModel):
-    apiKey: str
+    apiKey: str | None = None
     clientName: str
     clientVersion: str
     serviceName: str
@@ -19,7 +22,7 @@ class ConnectClientIn(BaseModel):
 class ConnectServiceIn(BaseModel):
     apiKey: str
     debug: bool
-    userData: UserData
+    userData: UserData | dict
     payload: dict
 
 
@@ -29,9 +32,18 @@ class ConnectServiceOut(BaseModel):
     payload: dict
 
 
+class ConnectStatus(str, Enum):
+    SUCCESS = "success"
+    ERROR = "error"  # Service error
+    UNREGISTERED = "unregistered"  # Service or path does not exist
+    UNREACHABLE = "unreachable"  # The service is not responding
+    UNAUTHORIZED = "unauthorized"  # Permission denied
+    CONNECT = "connect"  # Connect internal error
+
+
 class ConnectClientOut(BaseModel):
     success: bool
-    id: str
-    status: str
+    id: int
+    status: ConnectStatus
     message: str
     payload: dict

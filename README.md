@@ -34,10 +34,11 @@ Les services sont conservés en mémoire par instance de Connect.
   "routes": [
     {
       "path": "string", // Chemin de la route
-      "method": "string", // GET, POST, PUT, PATCH, DELETE
+      "method": "string", // GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD, TRACE
       "permission": 0 // Bitmask pour le contrôle d'accès (0 = route publique)
     }
   ],
+  "overrideIp": "string", // Optionnel. Utiliser une autre adresse IP. Pour Docker : host.docker.internal
   "listeningPort": 0, // Port d'écoute du service (l'IP est déterminée automatiquement)
   "apiKey": "string" // Clé de l'API Connect pour permettre l'enregistrement du service
 }
@@ -68,17 +69,17 @@ Connect `/services` **GET**
 
 Connect `/connect`
 
-Selon la route appelée, utiliser la méthode HTTP correspondante sur la route `/connect` (**GET**, **POST**, **PUT**, **PATCH**, **DELETE**)
+Selon la route appelée, utiliser la méthode HTTP correspondante sur la route `/connect` (**GET**, **POST**, **PUT**, **PATCH**, **DELETE**, **OPTIONS**, **HEAD**, **TRACE**).
 
 #### Envoyé par le client
 
-Si applicable, la requête doit contenir le JWT à des fins d'authentification. Soit dans le champ "Authorization" de l'en-tête soit dans les cookies de la requête.
+Si applicable, la requête doit contenir le JWT à des fins d'authentification. Soit dans le champ "Authorization" de l'en-tête soit dans les cookies de la requête (clé "token").
 
 Si un service effectue la requête, il peut remplir le champ "apiKey" pour passer la vérification d'accès utilisateur.
 
 ```json
 {
-  "apiKey": "string", // Clé de l'API Connect pour permettre l'accès direct à toutes les routes (seulement si service)
+  "apiKey": "string", // Optionnel. Clé de l'API Connect pour permettre l'accès direct à toutes les routes (seulement si service)
   "clientName": "string", // Nom du module appelant
   "clientVersion": "string", // Version du module appelant
   "serviceName": "string", // Nom (name) du service enregistré à appeler
@@ -92,8 +93,6 @@ Si un service effectue la requête, il peut remplir le champ "apiKey" pour passe
 
 La requête n'est émise que si l'accès est possible et autorisé (vérification de la route (+ méthode HTTP), validation du JWT et application du bitmask sur le code permission de la route).
 
-Les informations contenues dans le header sont dupliquées pour la requête sortante.
-
 L'appel est fait sur le service avec `[IP]`:`listeningPort`/`path` avec la méthode HTTP utilisée à l'appel.
 
 La clé API de Connect est envoyée dans chaque requête pour permettre aux services d'authentifier Connect. Le service possède déjà la clé API, car il l'a transmise plus tôt pour s'enregistrer.
@@ -102,7 +101,7 @@ La clé API de Connect est envoyée dans chaque requête pour permettre aux serv
 {
   "apiKey": "string", // Clé de l'API Connect pour permettre au service d'authentifier l'émetteur de l'appel
   "debug": false, // Pour faciliter certains tests
-  "userData": {}, // Informations du JWT décodées
+  "userData": {}, // Informations du JWT décodées, rien dans l'objet si non authentifié
   "payload": {} // Données. Contenu de la requête. Format libre
 }
 ```
@@ -155,7 +154,7 @@ Description d'une ligne de log.
     "success": true,
     "path": "string",
     "method": "string", // Méthode HTTP utilisée
-    "httpCode": 0, // Code HTTP de la requête retour du service
+    "httpCode": 0, // Code HTTP retour de la requête
     "status": "string",
     "message": "string"
   },
@@ -170,11 +169,12 @@ Description d'une ligne de log.
 
 ## Authentification
 
-Informations contenues dans le JWT :
+Informations contenues dans le JWT (algorithme HS256) pour le champ `userData` :
 
 ```json
 {
-  "userId": "string",
+  "exp": 0, // Date d'expiration du JWT (POSIX sec)
+  "userId": 0,
   "permission": 0 // Bitmask de permission pour l'accès aux routes des services
 }
 ```

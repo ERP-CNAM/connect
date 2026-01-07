@@ -4,7 +4,7 @@ meta {
   seq: 4
 }
 
-post {
+get {
   url: {{API_URL}}/connect
   body: json
   auth: inherit
@@ -12,7 +12,7 @@ post {
 
 body:json {
   {
-    "apiKey": "string",
+  //   "apiKey": "{{API_KEY}}",
     "clientName": "CONNECT",
     "clientVersion": "1.0.0",
     "serviceName": "CONNECT",
