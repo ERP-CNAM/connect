@@ -50,7 +50,7 @@ def register(request: Request, body: RegisterBodyIn):
             replaced = True
             break
 
-    service_ip = request.client.host
+    service_ip = getattr(body, "overrideIp", None) or request.client.host
 
     body_stored = RegisterBodyStored(
         name=body.name,

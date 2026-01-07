@@ -8,7 +8,7 @@ CONNECT_API_KEY = os.getenv("CONNECT_API_KEY")
 assert CONNECT_API_KEY is not None, "CONNECT_API_KEY environment variable is not set"
 
 
-def validate_api_key(api_key: str) -> bool:
+def validate_api_key(api_key: str | None) -> bool:
     """
     Validates the provided API key against the configured CONNECT_API_KEY.
 

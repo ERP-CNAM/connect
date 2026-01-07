@@ -10,7 +10,7 @@ class UserData(BaseModel):
 
 
 class ConnectClientIn(BaseModel):
-    apiKey: str
+    apiKey: str | None = None
     clientName: str
     clientVersion: str
     serviceName: str

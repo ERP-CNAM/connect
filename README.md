@@ -38,6 +38,7 @@ Les services sont conservés en mémoire par instance de Connect.
       "permission": 0 // Bitmask pour le contrôle d'accès (0 = route publique)
     }
   ],
+  "overrideIp": "string", // Optionnel. Utiliser une autre adresse IP. Pour Docker : host.docker.internal
   "listeningPort": 0, // Port d'écoute du service (l'IP est déterminée automatiquement)
   "apiKey": "string" // Clé de l'API Connect pour permettre l'enregistrement du service
 }
@@ -78,7 +79,7 @@ Si un service effectue la requête, il peut remplir le champ "apiKey" pour passe
 
 ```json
 {
-  "apiKey": "string", // Clé de l'API Connect pour permettre l'accès direct à toutes les routes (seulement si service)
+  "apiKey": "string", // Optionnel. Clé de l'API Connect pour permettre l'accès direct à toutes les routes (seulement si service)
   "clientName": "string", // Nom du module appelant
   "clientVersion": "string", // Version du module appelant
   "serviceName": "string", // Nom (name) du service enregistré à appeler
