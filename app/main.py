@@ -14,8 +14,15 @@ from app.models.connect_body import (
     ConnectServiceIn,
     ConnectServiceOut,
     ConnectStatus,
+    UserData,
 )
-from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
+from app.models.connect_log import ConnectLog
+from app.models.register_body import (
+    HttpMethod,
+    RegisterBodyIn,
+    RegisterBodyOut,
+    RegisterBodyStored,
+)
 from app.security.jwt import validate_jwt
 from app.security.key import get_api_key, validate_api_key
 
@@ -84,6 +91,57 @@ def services():
     ]
 
 
+def log_and_send(
+    timestamp_in: float,
+    body: ConnectClientIn,
+    method: HttpMethod,
+    service_version: str,
+    data_out: ConnectClientOut,
+    user_data: UserData | dict,
+    status_code: int,
+) -> JSONResponse:
+    # Timestamp out
+    timestamp_out = time() * 1000
+
+    # Prepare log
+    log_id = 0
+    log = ConnectLog(
+        id=log_id,
+        timestampIn=timestamp_in,
+        timestampOut=timestamp_out,
+        identification={
+            "connectVersion": CONNECT_VERSION,
+            "clientName": body.clientName,
+            "clientVersion": body.clientVersion,
+            "serviceName": body.serviceName,
+            "serviceVersion": service_version,
+        },
+        request={
+            "success": data_out.success,
+            "path": body.path,
+            "method": method,
+            "httpCode": status_code,
+            "status": data_out.status,
+            "message": data_out.message,
+        },
+        data={
+            "debug": body.debug,
+            "userData": user_data,
+            "payloadIn": body.payload,
+            "payloadOut": data_out.payload,
+        },
+    )
+
+    # Log data
+    # TODO
+    print(log.model_dump_json())
+
+    # Update response
+    data_out.id = log_id
+
+    return JSONResponse(status_code=status_code, content=data_out.model_dump())
+
+
 @api.api_route(
     "/connect",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"],
@@ -105,6 +163,7 @@ def connect(request: Request, body: ConnectClientIn):
 
     token = None
     user_data = {}
+    service_version = ""
 
     # JWT in Authorization header
     auth = request.headers.get("Authorization")
@@ -122,14 +181,26 @@ def connect(request: Request, body: ConnectClientIn):
         except jwt.ExpiredSignatureError:
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Expired JWT"
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED, content=data_out.model_dump()
+            return log_and_send(
+                timestamp_in=timestamp_in,
+                body=body,
+                method=request.method,
+                service_version=service_version,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
         except jwt.InvalidTokenError:
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Invalid JWT"
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED, content=data_out.model_dump()
+            return log_and_send(
+                timestamp_in=timestamp_in,
+                body=body,
+                method=request.method,
+                service_version=service_version,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
     user_permission = 0 if not user_data else user_data["permission"]
 
@@ -141,12 +212,19 @@ def connect(request: Request, body: ConnectClientIn):
     for service in registered_services:
         if service.name == body.serviceName:
             matched_service = service
+            service_version = service.version
             break
     if matched_service is None:
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Service not registered"
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
+        return log_and_send(
+            timestamp_in=timestamp_in,
+            body=body,
+            method=request.method,
+            service_version=service_version,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
     # Check path/route
@@ -159,8 +237,14 @@ def connect(request: Request, body: ConnectClientIn):
     if matched_route is None:
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Path not in service"
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND, content=data_out.model_dump()
+        return log_and_send(
+            timestamp_in=timestamp_in,
+            body=body,
+            method=request.method,
+            service_version=service_version,
+            data_out=data_out,
+            user_data=user_data,
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
     # Check method
@@ -169,9 +253,14 @@ def connect(request: Request, body: ConnectClientIn):
         data_out.message = (
             f"Method {request.method} used on {matched_route.method.value} route"
         )
-        return JSONResponse(
+        return log_and_send(
+            timestamp_in=timestamp_in,
+            body=body,
+            method=request.method,
+            service_version=service_version,
+            data_out=data_out,
+            user_data=user_data,
             status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
-            content=data_out.model_dump(),
         )
 
     # Check access
@@ -180,8 +269,14 @@ def connect(request: Request, body: ConnectClientIn):
         if user_permission & matched_route.permission != matched_route.permission:
             data_out.status = ConnectStatus.UNAUTHORIZED
             data_out.message = "Permission denied"
-            return JSONResponse(
-                status_code=status.HTTP_403_FORBIDDEN, content=data_out.model_dump()
+            return log_and_send(
+                timestamp_in=timestamp_in,
+                body=body,
+                method=request.method,
+                service_version=service_version,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_403_FORBIDDEN,
             )
 
     # Prepare service call
@@ -209,9 +304,14 @@ def connect(request: Request, body: ConnectClientIn):
     except Exception as e:
         data_out.status = ConnectStatus.UNREACHABLE
         data_out.message = f"Service did not respond ({e})"
-        return JSONResponse(
+        return log_and_send(
+            timestamp_in=timestamp_in,
+            body=body,
+            method=request.method,
+            service_version=service_version,
+            data_out=data_out,
+            user_data=user_data,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content=data_out.model_dump(),
         )
     # Process service response
     try:
@@ -220,9 +320,14 @@ def connect(request: Request, body: ConnectClientIn):
     except ValidationError:
         data_out.status = ConnectStatus.CONNECT
         data_out.message = f"Service response unprocessable ({response})"
-        return JSONResponse(
+        return log_and_send(
+            timestamp_in=timestamp_in,
+            body=body,
+            method=request.method,
+            service_version=service_version,
+            data_out=data_out,
+            user_data=user_data,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=data_out.model_dump(),
         )
     service_out = ConnectServiceOut(
         success=response["success"],
@@ -237,16 +342,12 @@ def connect(request: Request, body: ConnectClientIn):
     data_out.message = service_out.message
     data_out.payload = service_out.payload
 
-    # Timestamp out
-    timestamp_out = time() * 1000
-
-    # Prepare log
-    # TODO
-
-    # Log data
-    # TODO
-
-    return JSONResponse(
+    return log_and_send(
+        timestamp_in=timestamp_in,
+        body=body,
+        method=request.method,
+        service_version=service_version,
+        data_out=data_out,
+        user_data=user_data,
         status_code=status_code,
-        content=data_out.model_dump(),
     )
