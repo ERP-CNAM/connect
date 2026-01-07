@@ -8,15 +8,15 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from app.logger import log_and_prepare
 from app.models.connect_body import (
     ConnectClientIn,
     ConnectClientOut,
     ConnectServiceIn,
     ConnectServiceOut,
     ConnectStatus,
-    UserData,
 )
-from app.models.connect_log import ConnectLog, FixedLogData
+from app.models.connect_log import FixedLogData
 from app.models.register_body import RegisterBodyIn, RegisterBodyOut, RegisterBodyStored
 from app.security.jwt import validate_jwt
 from app.security.key import get_api_key, validate_api_key
@@ -86,54 +86,6 @@ def services():
     ]
 
 
-def log_and_send(
-    log_data: FixedLogData,
-    data_out: ConnectClientOut,
-    user_data: UserData | dict,
-    status_code: int,
-) -> JSONResponse:
-    # Timestamp out
-    timestamp_out = time() * 1000
-
-    # Prepare log
-    log_id = 0
-    log = ConnectLog(
-        id=log_id,
-        timestampIn=log_data.timestamp_in,
-        timestampOut=timestamp_out,
-        identification={
-            "connectVersion": CONNECT_VERSION,
-            "clientName": log_data.body.clientName,
-            "clientVersion": log_data.body.clientVersion,
-            "serviceName": log_data.body.serviceName,
-            "serviceVersion": log_data.service_version,
-        },
-        request={
-            "success": data_out.success,
-            "path": log_data.body.path,
-            "method": log_data.method,
-            "httpCode": status_code,
-            "status": data_out.status,
-            "message": data_out.message,
-        },
-        data={
-            "debug": log_data.body.debug,
-            "userData": user_data,
-            "payloadIn": log_data.body.payload,
-            "payloadOut": data_out.payload,
-        },
-    )
-
-    # Log data
-    # TODO
-    print(log.model_dump_json())
-
-    # Update response
-    data_out.id = log_id
-
-    return JSONResponse(status_code=status_code, content=data_out.model_dump())
-
-
 @api.api_route(
     "/connect",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD", "TRACE"],
@@ -180,7 +132,7 @@ def connect(request: Request, body: ConnectClientIn):
         except jwt.ExpiredSignatureError:
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Expired JWT"
-            return log_and_send(
+            return log_and_prepare(
                 log_data=log_data,
                 data_out=data_out,
                 user_data=user_data,
@@ -189,7 +141,7 @@ def connect(request: Request, body: ConnectClientIn):
         except jwt.InvalidTokenError:
             data_out.status = ConnectStatus.UNREGISTERED
             data_out.message = "Invalid JWT"
-            return log_and_send(
+            return log_and_prepare(
                 log_data=log_data,
                 data_out=data_out,
                 user_data=user_data,
@@ -210,7 +162,7 @@ def connect(request: Request, body: ConnectClientIn):
     if matched_service is None:
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Service not registered"
-        return log_and_send(
+        return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
             user_data=user_data,
@@ -227,7 +179,7 @@ def connect(request: Request, body: ConnectClientIn):
     if matched_route is None:
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Path not in service"
-        return log_and_send(
+        return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
             user_data=user_data,
@@ -240,7 +192,7 @@ def connect(request: Request, body: ConnectClientIn):
         data_out.message = (
             f"Method {request.method} used on {matched_route.method.value} route"
         )
-        return log_and_send(
+        return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
             user_data=user_data,
@@ -253,7 +205,7 @@ def connect(request: Request, body: ConnectClientIn):
         if user_permission & matched_route.permission != matched_route.permission:
             data_out.status = ConnectStatus.UNAUTHORIZED
             data_out.message = "Permission denied"
-            return log_and_send(
+            return log_and_prepare(
                 log_data=log_data,
                 data_out=data_out,
                 user_data=user_data,
@@ -285,7 +237,7 @@ def connect(request: Request, body: ConnectClientIn):
     except Exception as e:
         data_out.status = ConnectStatus.UNREACHABLE
         data_out.message = f"Service did not respond ({e})"
-        return log_and_send(
+        return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
             user_data=user_data,
@@ -298,7 +250,7 @@ def connect(request: Request, body: ConnectClientIn):
     except ValidationError:
         data_out.status = ConnectStatus.CONNECT
         data_out.message = f"Service response unprocessable ({response})"
-        return log_and_send(
+        return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
             user_data=user_data,
@@ -317,7 +269,7 @@ def connect(request: Request, body: ConnectClientIn):
     data_out.message = service_out.message
     data_out.payload = service_out.payload
 
-    return log_and_send(
+    return log_and_prepare(
         log_data=log_data,
         data_out=data_out,
         user_data=user_data,
