@@ -85,7 +85,7 @@ Si un service effectue la requête, il peut remplir le champ "apiKey" pour passe
   "serviceName": "string", // Nom (name) du service enregistré à appeler
   "path": "string", // Chemin de la route du service
   "debug": false, // Pour faciliter certains tests
-  "payload": {} // Données. Contenu de la requête. Format libre
+  "payload": null // Données. Contenu de la requête. JSON au format libre
 }
 ```
 
@@ -102,7 +102,7 @@ La clé API de Connect est envoyée dans chaque requête pour permettre aux serv
   "apiKey": "string", // Clé de l'API Connect pour permettre au service d'authentifier l'émetteur de l'appel
   "debug": false, // Pour faciliter certains tests
   "userData": {}, // Informations du JWT décodées, rien dans l'objet si non authentifié
-  "payload": {} // Données. Contenu de la requête. Format libre
+  "payload": null // Données. Contenu de la requête. JSON au format libre
 }
 ```
 
@@ -114,7 +114,7 @@ Le code HTTP de la requête doit être défini en accord avec le résultat.
 {
   "success": true, // Le traitement a réussi, sinon envoi d'une erreur au client
   "message": "string", // À titre informatif ou en cas d'erreur
-  "payload": {} // Données. Résultat de la requête. Format libre
+  "payload": null // Données. Résultat de la requête. JSON au format libre
 }
 ```
 
@@ -128,9 +128,9 @@ Le log est enregistré avant renvoi des informations au client.
 {
   "success": true,
   "id": 0, // Généré par Connect, id de la requête (pour retrouver le log)
-  "status": "string", // success, error (erreur du service), unregistered (le service ou la route appelée n'existe pas), unreachable (le service appelé ne répond pas), unauthorized (permissions insuffisantes), connect (erreur interne à Connect)
+  "status": "string", // success, error (erreur du service), unregistered (le service ou la route appelée n'existe pas), unreachable (le service appelé ne répond pas), unauthorized (permissions insuffisantes), connect_error (erreur interne à Connect)
   "message": "string", // À titre informatif ou en cas d'erreur
-  "payload": {} // Données. Résultat de la requête. Format libre
+  "payload": null // Données. Résultat de la requête. JSON au format libre
 }
 ```
 

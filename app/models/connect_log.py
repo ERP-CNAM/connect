@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 from app.models.connect_body import ConnectClientIn, ConnectStatus, UserData
@@ -24,8 +26,8 @@ class Request(BaseModel):
 class Data(BaseModel):
     debug: bool
     userData: UserData | dict
-    payloadIn: dict
-    payloadOut: dict
+    payloadIn: Any
+    payloadOut: Any
 
 
 class ConnectLog(BaseModel):
