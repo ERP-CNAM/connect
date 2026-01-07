@@ -248,7 +248,7 @@ def connect(request: Request, body: ConnectClientIn):
         response = response.json()
         ConnectServiceOut.model_validate(response)
     except ValidationError:
-        data_out.status = ConnectStatus.CONNECT
+        data_out.status = ConnectStatus.CONNECT_ERROR
         data_out.message = f"Service response unprocessable ({response})"
         return log_and_prepare(
             log_data=log_data,
@@ -257,7 +257,7 @@ def connect(request: Request, body: ConnectClientIn):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
     except requests.JSONDecodeError:
-        data_out.status = ConnectStatus.CONNECT
+        data_out.status = ConnectStatus.CONNECT_ERROR
         data_out.message = f"Service response not JSON ({response.text})"
         return log_and_prepare(
             log_data=log_data,
