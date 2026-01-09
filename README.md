@@ -161,8 +161,8 @@ Description d'une ligne de log.
   "data": {
     "debug": false,
     "userData": {},
-    "payloadIn": {}, // Données en entrée
-    "payloadOut": {} // Données en sortie
+    "payloadIn": null, // Données en entrée
+    "payloadOut": null // Données en sortie
   }
 }
 ```
@@ -174,7 +174,7 @@ Informations contenues dans le JWT (algorithme HS256) pour le champ `userData` :
 ```json
 {
   "exp": 0, // Date d'expiration du JWT (POSIX sec)
-  "userId": 0,
+  "userId": "string",
   "permission": 0 // Bitmask de permission pour l'accès aux routes des services
 }
 ```

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class UserData(BaseModel):
     exp: int
-    userId: int
+    userId: str
     permission: int
 
 

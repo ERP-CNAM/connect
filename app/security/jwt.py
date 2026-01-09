@@ -23,9 +23,12 @@ def validate_jwt(token: str) -> UserData:
     Raises:
         jwt.ExpiredSignatureError If the JWT has expired
         jwt.InvalidTokenError If the JWT is invalid
+        pydantic.ValidationError If the JWT payload cannot be parsed
 
     returns:
         Decoded UserData
     """
 
-    return jwt.decode(token, CONNECT_JWT_SECRET, algorithms=["HS256"])
+    user_data = jwt.decode(token, CONNECT_JWT_SECRET, algorithms=["HS256"])
+
+    return UserData(**user_data)

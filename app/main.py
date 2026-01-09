@@ -147,7 +147,16 @@ def connect(request: Request, body: ConnectClientIn):
                 user_data=user_data,
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
-    user_permission = 0 if not user_data else user_data["permission"]
+        except ValidationError as e:
+            data_out.status = ConnectStatus.UNREGISTERED
+            data_out.message = f"JWT payload invalid ({e})"
+            return log_and_prepare(
+                log_data=log_data,
+                data_out=data_out,
+                user_data=user_data,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+    user_permission = 0 if not user_data else user_data.permission
 
     # Check API key
     api_key_access = validate_api_key(body.apiKey)
