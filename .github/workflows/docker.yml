@@ -6,33 +6,7 @@ on:
       - main
 
 jobs:
-  docker-build-and-push:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.1
-
-      - name: Login
-        uses: docker/login-action@v3.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set lowercase repo name
-        id: repo
-        run: echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6.18.0
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ steps.repo.outputs.repo }}:latest
-            ghcr.io/${{ steps.repo.outputs.repo }}:${{ github.sha }}
+  docker-build:
+    uses: ERP-CNAM/workflows-templates/.github/workflows/image-builder.yml@main
+    with:
+      context: .
