@@ -181,10 +181,13 @@ def connect(request: Request, body: ConnectClientIn):
     # Check path/route
     clean_path = body.path.split("?")[0]
     matched_route = None
+    method_valid = False
     for route in matched_service.routes:
         if route.path == clean_path:
             matched_route = route
-            break
+            if route.method == request.method:
+                method_valid = True
+                break
     if matched_route is None:
         data_out.status = ConnectStatus.UNREGISTERED
         data_out.message = "Path not in service"
@@ -196,11 +199,9 @@ def connect(request: Request, body: ConnectClientIn):
         )
 
     # Check method
-    if matched_route.method != request.method:
+    if not method_valid:
         data_out.status = ConnectStatus.UNREGISTERED
-        data_out.message = (
-            f"Method {request.method} used on {matched_route.method.value} route"
-        )
+        data_out.message = f"Method {request.method} wrongfully used on route"
         return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
