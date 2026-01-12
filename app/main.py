@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from app.logger import log_and_prepare
+from app.match_route import match_route
 from app.models.connect_body import (
     ConnectClientIn,
     ConnectClientOut,
@@ -179,11 +180,10 @@ def connect(request: Request, body: ConnectClientIn):
         )
 
     # Check path/route
-    clean_path = body.path.split("?")[0]
     matched_route = None
     method_valid = False
     for route in matched_service.routes:
-        if route.path == clean_path:
+        if match_route(route.path, body.path):
             matched_route = route
             if route.method == request.method:
                 method_valid = True

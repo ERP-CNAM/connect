@@ -26,6 +26,8 @@ Connect `/register` **POST**
 
 Les services sont conservés en mémoire par instance de Connect.
 
+Le chemin de la route supporte la notation wildcard sous la forme `{element}` en faisant usage des accolades.
+
 ```json
 {
   "name": "string", // Nom du service
