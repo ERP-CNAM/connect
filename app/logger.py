@@ -1,4 +1,5 @@
-import os
+import os, logging
+from logging.handlers import RotatingFileHandler
 from time import time
 
 from dotenv import load_dotenv
@@ -12,6 +13,15 @@ load_dotenv(dotenv_path=".env")
 CONNECT_VERSION = os.getenv("CONNECT_VERSION")
 assert CONNECT_VERSION is not None, "CONNECT_VERSION environment variable is not set"
 
+logger = logging.getLogger("HTTP Requests")
+logger.setLevel(logging.DEBUG)
+
+log_file = os.path.join(os.path.curdir, "logs", "connect.log")
+
+file_handler = RotatingFileHandler(log_file, mode='a', maxBytes=4000000, backupCount=10)
+file_handler.setLevel(logging.DEBUG)
+
+logger.addHandler(file_handler)
 
 def log_and_prepare(
     log_data: FixedLogData,
@@ -54,6 +64,7 @@ def log_and_prepare(
     # Log data
     # TODO
     print(log.model_dump_json())
+    logger.info(log.model_dump_json())
 
     # Update response
     data_out.id = log_id
