@@ -2,7 +2,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from time import time
-from uuid import uuid8 as uuid
+from uuid import uuid4 as uuid
 
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
