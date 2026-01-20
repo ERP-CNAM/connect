@@ -2,6 +2,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from time import time
+from uuid import uuid8 as uuid
 
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
@@ -35,7 +36,7 @@ def log_and_prepare(
     timestamp_out = time() * 1000
 
     # Prepare log
-    log_id = "0"
+    log_id = uuid().hex
     log = ConnectLog(
         id=log_id,
         timestampIn=log_data.timestamp_in,
