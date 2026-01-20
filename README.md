@@ -129,7 +129,7 @@ Le log est enregistré avant renvoi des informations au client.
 ```json
 {
   "success": true,
-  "id": 0, // Généré par Connect, id de la requête (pour retrouver le log)
+  "id": "string", // Généré par Connect, id de la requête (pour retrouver le log)
   "status": "string", // success, error (erreur du service), unregistered (le service ou la route appelée n'existe pas), unreachable (le service appelé ne répond pas), unauthorized (permissions insuffisantes), connect_error (erreur interne à Connect)
   "message": "string", // À titre informatif ou en cas d'erreur
   "payload": null // Données. Résultat de la requête. JSON au format libre
