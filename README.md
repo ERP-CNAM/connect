@@ -142,7 +142,7 @@ Description d'une ligne de log.
 
 ```json
 {
-  "id": 0,
+  "id": "string",
   "timestampIn": 0, // Généré par Connect, dès réception (POSIX ms)
   "timestampOut": 0, // Généré par Connect, à l'envoi retour (POSIX ms)
   "identification": {

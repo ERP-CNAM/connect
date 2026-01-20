@@ -44,7 +44,7 @@ class ConnectStatus(str, Enum):
 
 class ConnectClientOut(BaseModel):
     success: bool
-    id: int
+    id: str
     status: ConnectStatus
     message: str
     payload: Any

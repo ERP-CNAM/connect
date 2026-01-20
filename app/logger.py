@@ -1,4 +1,5 @@
-import os, logging
+import logging
+import os
 from logging.handlers import RotatingFileHandler
 from time import time
 
@@ -18,10 +19,11 @@ logger.setLevel(logging.DEBUG)
 
 log_file = os.path.join(os.path.curdir, "logs", "connect.log")
 
-file_handler = RotatingFileHandler(log_file, mode='a', maxBytes=4000000, backupCount=10)
+file_handler = RotatingFileHandler(log_file, mode="a", maxBytes=4000000, backupCount=10)
 file_handler.setLevel(logging.DEBUG)
 
 logger.addHandler(file_handler)
+
 
 def log_and_prepare(
     log_data: FixedLogData,
@@ -33,7 +35,7 @@ def log_and_prepare(
     timestamp_out = time() * 1000
 
     # Prepare log
-    log_id = 0
+    log_id = "0"
     log = ConnectLog(
         id=log_id,
         timestampIn=log_data.timestamp_in,

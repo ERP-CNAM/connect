@@ -106,7 +106,7 @@ def connect(request: Request, body: ConnectClientIn):
 
     data_out: ConnectClientOut = ConnectClientOut(
         success=False,
-        id=0,
+        id="",
         status=ConnectStatus.SUCCESS,
         message="",
         payload={},
