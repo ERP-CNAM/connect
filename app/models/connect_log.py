@@ -31,7 +31,7 @@ class Data(BaseModel):
 
 
 class ConnectLog(BaseModel):
-    id: int
+    id: str
     timestampIn: float
     timestampOut: float
     identification: Identification
