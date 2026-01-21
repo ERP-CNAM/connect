@@ -96,11 +96,13 @@ def connect(request: Request, body: ConnectClientIn):
     # Timestamp in
     timestamp_in = time() * 1000
 
+    http_method = request.headers.get("X-HTTP-Method-Override", request.method)
+
     # Prepare data
     log_data = FixedLogData(
         timestamp_in=timestamp_in,
         body=body,
-        method=request.method,
+        method=http_method,
         service_version="",
     )
 
@@ -185,7 +187,7 @@ def connect(request: Request, body: ConnectClientIn):
     for route in matched_service.routes:
         if match_route(route.path, body.path):
             matched_route = route
-            if route.method == request.method:
+            if route.method == http_method:
                 method_valid = True
                 break
     if matched_route is None:
@@ -201,7 +203,7 @@ def connect(request: Request, body: ConnectClientIn):
     # Check method
     if not method_valid:
         data_out.status = ConnectStatus.UNREGISTERED
-        data_out.message = f"Method {request.method} wrongfully used on route"
+        data_out.message = f"Method {http_method} wrongfully used on route"
         return log_and_prepare(
             log_data=log_data,
             data_out=data_out,
@@ -234,7 +236,7 @@ def connect(request: Request, body: ConnectClientIn):
     status_code = None
     try:
         response = requests.request(
-            method=request.method,
+            method=http_method,
             url=f"http://{matched_service.ip}:{matched_service.listeningPort}/{body.path}",
             json=service_in.model_dump(),
             timeout=10,
