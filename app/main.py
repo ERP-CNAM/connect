@@ -65,7 +65,7 @@ def register(request: Request, body: RegisterBodyIn):
     registered_services.append(body_stored)
 
     return JSONResponse(
-        status_code=status.HTTP_202_ACCEPTED,
+        status_code=status.HTTP_200_OK,
         content={
             "detail": f"Replaced existing {body.name} with version {body.version}"
             if replaced
