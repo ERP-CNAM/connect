@@ -1,0 +1,32 @@
+meta {
+  name: Get files
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{API_URL}}/connect
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3OTg4MDQ4MDAsInVzZXJJZCI6IkRKVC0wMSIsInBlcm1pc3Npb24iOjZ9.NsJAvwUcDVOXzcpg4WcXFbziRbWur6jpeLbCpQTU4cI
+}
+
+body:json {
+  {
+  //   "apiKey": "{{API_KEY}}",
+    "clientName": "Jean-Marc Fan Club",
+    "clientVersion": "1.0.0",
+    "serviceName": "Stein Files",
+    "path": "files",
+    "debug": false,
+    "payload": null
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
